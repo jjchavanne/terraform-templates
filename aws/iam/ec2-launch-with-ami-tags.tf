@@ -1,28 +1,10 @@
 # Ref: https://aws.amazon.com/premiumsupport/knowledge-center/restrict-launch-tagged-ami/
 
-# Role
-resource "aws_iam_role" "privesc3-CreateEC2WithExistingInstanceProfile-role" {
-  name                = "privesc3-CreateEC2WithExistingInstanceProfile-role"
-  assume_role_policy  = jsonencode({
-   "Version": "2012-10-17",
-   "Statement": [
-     {
-       "Action": "sts:AssumeRole",
-       "Principal": {
-         "Service": "ec2.amazonaws.com"
-       },
-       "Effect": "Allow",
-       "Sid": ""
-     }
-   ]
-  })
-}
-
 # Policy
-resource "aws_iam_policy" "LaunchEC2withAMIsAndTags" {
-  name        = "LaunchEC2withAMIsAndTags"
+resource "aws_iam_policy" "ec2-launch-policy" {
+  name        = "EC2LaunchwithAMIsAndTags-Policy"
   path        = "/"
-  description = ""
+  description = "Allow Launch of EC2 Instances with AMIs with required tags"
 
   # Terraform's "jsonencode" function converts a
   # Terraform expression result to valid JSON syntax.
@@ -61,7 +43,7 @@ resource "aws_iam_policy" "LaunchEC2withAMIsAndTags" {
         "Resource": "arn:aws:ec2:us-east-1::image/ami-*",
         "Condition": {
           "StringEquals": {
-            "ec2:ResourceTag/Environment": "Prod"
+            "ec2:ResourceTag/image": "defender"
           }
         } 
       }
@@ -69,4 +51,27 @@ resource "aws_iam_policy" "LaunchEC2withAMIsAndTags" {
   })
 }
 
-#
+# Role
+resource "aws_iam_role" "ec2-access-role" {
+  name                = "EC2LaunchwithAMIsAndTags-Role"
+  assume_role_policy  = jsonencode({
+   "Version": "2012-10-17",
+   "Statement": [
+     {
+       "Action": "sts:AssumeRole",
+       "Principal": {
+         "Service": "ec2.amazonaws.com"
+       },
+       "Effect": "Allow",
+       "Sid": ""
+     }
+   ]
+  })
+}
+
+# Attachment Policy
+resource "aws_iam_policy_attachment" "ec2-policy-attachment" {
+  name       = "EC2LaunchwithAMIsAndTags-PolicyAttachment"
+  roles      = ["${aws_iam_role.ec2-access-role.name}"]
+  policy_arn = "${aws_iam_policy.ec2-launch-policy.arn}"
+}
